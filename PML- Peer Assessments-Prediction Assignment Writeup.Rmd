@@ -1,0 +1,170 @@
+---
+title: "Practical Machine Learning - Peer Assessments_Prediction Assignment Writeup"
+author: "Alexander Calzadilla Mendez"
+date: "Thursday, February 19, 2015"
+output: html_document
+---
+
+## Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+### Set Directory and Source of Data for work
+
+The training data for this project are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+```{r}
+setwd(dir="d:/Biblioteca/00 - COURSERA Johns Hopkins Specialization in Data Science/Modulo 08 - Practical Machine Learning/")
+TrainingData <-read.csv("pml-training.csv")
+TestingData  <-read.csv("pml-testing.csv" )
+
+```
+
+### Loading all library used
+
+```{r}
+library(ggplot2)
+library(lattice)
+library(caret)
+library(rpart)
+library(randomForest)
+
+```
+
+## Exploratory Analysis and Visualisation of the Data
+
+```{r}
+# Row's Counting
+nrow(TrainingData)
+# Column's Counting
+ncol(TrainingData)
+#Summary details:
+summary(TrainingData[,c(1:2,159:160)])
+# Data Visualization using Scatterplot Matrices for visual reference
+pairs(TrainingData[1:10000,1:12])
+pairs(TrainingData[1:10000,13:24])
+pairs(TrainingData[1:10000,25:36])
+
+```
+
+## Depuration and Cleaning of the Data set
+
+According with the Exploratory Analysis, there are 160 columns in the Training Set, and must be excluded columns with NA values.
+
+
+``` {r}
+TrainingFinalData<-TrainingData
+TrainingFinalData[ TrainingFinalData == '' | TrainingFinalData == 'NA'] <- NA
+indx <-which(colSums(is.na(TrainingFinalData))!=0)
+TrainingFinalData<-TrainingFinalData[, -indx]
+TrainingFinalData<-TrainingFinalData[,-(1:7)]
+
+```
+
+## Creating a Data set that are Valid
+
+This will be useful for Cross validation with the Training Set.
+
+``` {r}
+InTraining  <- createDataPartition(y=TrainingFinalData$classe,p=0.70,list=FALSE)
+TrainingFinalData <- TrainingFinalData[InTraining,]
+ValidateSet <- TrainingFinalData[-InTraining,]
+
+```
+
+## Elaboration of Prediction model
+
+Here will be used Random Forest library to train the Prediction Model set to predict the weight lifting quality in the Training Set.
+
+``` {r}
+Pmodel <- train(classe~., data=TrainingFinalData, method = "rf", tuneLength = 1, ntree = 25)
+print(Pmodel)
+
+```
+
+## Testing the Prediction Model
+
+For the test we use the Confussion Matrix to evaluate the Prediction Model set versus the Validate Data set.
+
+``` {r}
+confusionMatrix(predict(Pmodel, ValidateSet), ValidateSet$classe)
+
+```
+
+## Graphical diagram of the Prediction Model's accuracy
+
+``` {r}
+plot(predict(Pmodel,newdata=ValidateSet[,-ncol(ValidateSet)]),ValidateSet$classe, xlab="Validate Set", ylab="Prediction Model Set",col = c("red", "blue","yellow","green", "black"))
+
+
+#  Brief description about each class:
+        
+#  A: Exactly according to the specification
+#  B: Throwing the elbows to the front
+#  C: Lifting the dumbbell only halfway
+#  D: Lowering the dumbbell only halfway
+#  E: Throwing the hips to the front
+
+``` 
+
+## Estimation of the Accuracy of the Prediction Model
+
+``` {r}
+
+accurate <- c(as.numeric(predict(Pmodel,newdata=ValidateSet[,-ncol(ValidateSet)])==ValidateSet$classe))
+MAccuracy <- sum(accurate)*100/nrow(ValidateSet)
+message("Accuracy of Prediction Model set VS Validate Data set = ", format(round(MAccuracy, 2), nsmall=2),"%")
+
+```
+
+## Forecast on the testing set:
+
+``` {r}
+# Number of rows:
+nrow(TestingData)
+
+# Number of columns:
+ncol(TestingData)
+
+# Summary details:
+summary(TestingData[,c(1:2,159:160)])
+
+```
+
+``` {r}
+Ptest<-predict(Pmodel, TestingData)
+print(Ptest)
+
+```
+
+## Conclusion
+
+A 100% accuracy was computed here, but must be taken some caution due to the use of Random forest, tends to overfitting the results.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
